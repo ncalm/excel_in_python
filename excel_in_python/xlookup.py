@@ -71,12 +71,13 @@ def xlookup_single(
 
     if not hasattr(lookup_array, "__iter__") or not hasattr(return_array, "__iter__"):
         raise TypeError("lookup_array and return_array must be iterable")
+    
+    lookup_array = ensure_numpy_array(lookup_array)
+    return_array = ensure_numpy_array(return_array)
 
     if lookup_array.size == 0 or return_array.size == 0:
         raise ValueError("lookup_array and return_array must not be empty")
 
-    lookup_array = ensure_numpy_array(lookup_array)
-    return_array = ensure_numpy_array(return_array)
 
     if lookup_array.ndim != 1:
         raise ValueError("lookup_array must be 1D")
