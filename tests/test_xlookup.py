@@ -74,3 +74,31 @@ def test_xlookup_next_smaller_from_first():
         search_mode=SearchMode.FROM_FIRST,
         expected_result=1
     )
+
+def test_xlookup_exact_match_from_last():
+    """ Test xlookup function with exact match from last """
+    lookup_value = 27
+    helper_xlookup(
+        lookup_value=lookup_value,
+        match_mode=MatchMode.EXACT,
+        search_mode=SearchMode.FROM_LAST,
+        expected_result=lookup_value
+        )
+    
+def test_xlookup_next_larger_from_last():
+    """ Test xlookup function with next larger match from last """
+    helper_xlookup(
+        lookup_value=10, # doesn't exist in the numeric lookup array
+        match_mode=MatchMode.NEXT_LARGER,
+        search_mode=SearchMode.FROM_LAST,
+        expected_result=11
+    )
+
+def test_xlookup_next_smaller_from_last():
+    """ Test xlookup function with next smaller match from last """
+    helper_xlookup(
+        lookup_value=10, # doesn't exist in the numeric lookup array
+        match_mode=MatchMode.NEXT_SMALLER,
+        search_mode=SearchMode.FROM_LAST,
+        expected_result=1
+    )

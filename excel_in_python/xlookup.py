@@ -71,7 +71,7 @@ def xlookup_single(
 
     if not hasattr(lookup_array, "__iter__") or not hasattr(return_array, "__iter__"):
         raise TypeError("lookup_array and return_array must be iterable")
-    
+
     lookup_array = ensure_numpy_array(lookup_array)
     return_array = ensure_numpy_array(return_array)
 
@@ -132,6 +132,8 @@ def xlookup_single(
                     sorted_lookup_array = lookup_array[sort_indices]
                     sorted_return_array = extract_result(
                         return_array, sort_indices, orientation)
+                    print(f"{sorted_lookup_array=}")
+                    # print(f"{sorted_return_array=}")
                 case SearchMode.BINARY_FROM_FIRST:
                     # the data are already sorted
                     sorted_lookup_array = lookup_array
@@ -148,9 +150,12 @@ def xlookup_single(
                     raise ValueError(f"Invalid search_mode: {search_mode}")
 
             # finds the position at which the lookup_value would be inserted in the lookup_array
+            # TODO: This doesn't work for arrays sorted in descending order, so we need to fix it
             pos = (np.searchsorted(sorted_lookup_array, lookup_value, side="left")
                    if match_mode == MatchMode.NEXT_LARGER
                    else np.searchsorted(sorted_lookup_array, lookup_value, side="right") - 1)
+            
+            print(f"{pos=}")
 
             # providing the position found is a valid position in the lookup_array
             if 0 <= pos < len(sorted_lookup_array):
