@@ -3,6 +3,7 @@ from enum import Enum
 import re
 import numpy as np
 import pandas as pd
+import bisect
 
 
 class MatchMode(Enum):
@@ -52,6 +53,16 @@ def ensure_numpy_array(obj):
     """
     return obj if isinstance(obj, np.ndarray) else np.array(obj)
 
+def exact_match(lookup_array, lookup_value, return_array, orientation):
+    """ Returns the index of the first exact match in the lookup_array. """
+    indices = np.flatnonzero(lookup_array == lookup_value)
+    if indices.size > 0:
+        idx = indices[0]
+        result = extract_result(return_array, idx, orientation)
+    else:
+        result = None
+
+    return result
 
 def xlookup_single(
         lookup_value,
@@ -87,8 +98,9 @@ def xlookup_single(
     if len(shape_return) == 1:
         orientation = LookupOrientation.VERTICAL
         if shape_return[0] != len_lookup:
-            raise ValueError(f"return_array dimensions {
-                             shape_return} do not match lookup_array length {len_lookup}")
+            raise ValueError(
+                f"return_array dim. {shape_return} do not match lookup_array length {len_lookup}"
+                )
     else:
         if shape_return[0] == len_lookup:
             orientation = LookupOrientation.VERTICAL
@@ -98,72 +110,43 @@ def xlookup_single(
             raise ValueError(
                 "One dimension of return_array must have the same length as lookup_array")
 
-    if search_mode == SearchMode.FROM_LAST:
-        lookup_array = lookup_array[::-1]  # lookup_array is always 1D
-        return_array = (
-            return_array[:, ::-1]
-            if orientation == LookupOrientation.HORIZONTAL
-            else return_array[::-1]
-        )
+    # if search_mode == SearchMode.FROM_LAST:
+    #     lookup_array = lookup_array[::-1]  # lookup_array is always 1D
+    #     return_array = (
+    #         return_array[:, ::-1]
+    #         if orientation == LookupOrientation.HORIZONTAL
+    #         else return_array[::-1]
+    #     )
 
     match match_mode:
         case MatchMode.EXACT:
-            indices = np.flatnonzero(lookup_array == lookup_value)
-            if indices.size > 0:
-                idx = indices[0]
-                result = extract_result(return_array, idx, orientation)
-            else:
-                result = default
+            result = exact_match(lookup_array, lookup_value, return_array, orientation)
+            result = result if result else default
         case MatchMode.NEXT_LARGER | MatchMode.NEXT_SMALLER:
-            # Either find the exact match or find the item that is next in the array if the array
-            # were sorted
-            # for FROM_FIRST, the array is sorted in ascending order
-            # for FROM_LAST, the array is sorted in descending order
-            # for BINARY_FROM_FIRST, the array is assumed to be sorted in ascending order
-            # for BINARY_FROM_LAST, the array is assumed to be sorted in descending order
-            match search_mode:
-                case SearchMode.FROM_FIRST | SearchMode.FROM_LAST:
-                    # the program sorts the data
-                    sort_indices = (
-                        np.argsort(lookup_array)
-                        if search_mode == SearchMode.FROM_FIRST
-                        else np.argsort(lookup_array)[::-1]
-                    )
-                    sorted_lookup_array = lookup_array[sort_indices]
-                    sorted_return_array = extract_result(
-                        return_array, sort_indices, orientation)
-                    print(f"{sorted_lookup_array=}")
-                    # print(f"{sorted_return_array=}")
-                case SearchMode.BINARY_FROM_FIRST:
-                    # the data are already sorted
-                    sorted_lookup_array = lookup_array
-                    sorted_return_array = return_array
-                case SearchMode.BINARY_FROM_LAST:
-                    # the data are already sorted, but we reverse it in it's current state
-                    sorted_lookup_array = lookup_array[::-1]
-                    sorted_return_array = (
-                        return_array[:, ::-1]
-                        if orientation == LookupOrientation.HORIZONTAL
-                        else return_array[::-1]
-                    )
-                case _:
-                    raise ValueError(f"Invalid search_mode: {search_mode}")
-
-            # finds the position at which the lookup_value would be inserted in the lookup_array
-            # TODO: This doesn't work for arrays sorted in descending order, so we need to fix it
-            pos = (np.searchsorted(sorted_lookup_array, lookup_value, side="left")
-                   if match_mode == MatchMode.NEXT_LARGER
-                   else np.searchsorted(sorted_lookup_array, lookup_value, side="right") - 1)
-            
-            print(f"{pos=}")
-
-            # providing the position found is a valid position in the lookup_array
-            if 0 <= pos < len(sorted_lookup_array):
-                # return the value from the return_array at the position found
-                result = extract_result(sorted_return_array, pos, orientation)
+            if search_mode in (SearchMode.FROM_FIRST, SearchMode.FROM_LAST):
+                sorted_lookup_array = np.sort(lookup_array)
+                if orientation == LookupOrientation.HORIZONTAL:
+                    sorted_return_array = return_array[:, np.argsort(lookup_array)]
+                else:
+                    sorted_return_array = return_array[np.argsort(lookup_array)]
             else:
-                # if the position is not valid, return the default value
-                result = default
+                sorted_lookup_array = lookup_array
+                sorted_return_array = return_array
+
+            # For BINARY search modes, the arrays are assumed to be sorted
+
+            if search_mode in (SearchMode.BINARY_FROM_FIRST, SearchMode.FROM_FIRST):
+                idx = bisect.bisect_left(sorted_lookup_array, lookup_value)
+            else:
+                idx = bisect.bisect_right(sorted_lookup_array, lookup_value)
+
+            if match_mode == MatchMode.NEXT_LARGER:
+                idx = min(idx, len_lookup - 1)
+            else:
+                idx = max(idx - 1, 0)
+
+            result = extract_result(sorted_return_array, idx, orientation)
+            
 
         case MatchMode.REGEX | MatchMode.WILDCARD:
             # For both of these match modes, Excel's XLOOKUP returns a #VALUE! error if either of
