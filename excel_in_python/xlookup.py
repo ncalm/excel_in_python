@@ -1,9 +1,9 @@
 """ This module provides a Python implementation of the XLOOKUP function in Excel. """
 from enum import Enum
+import bisect
 import re
 import numpy as np
 import pandas as pd
-import bisect
 
 
 class MatchMode(Enum):
@@ -118,62 +118,88 @@ def xlookup_single(
     #         else return_array[::-1]
     #     )
 
-    match match_mode:
-        case MatchMode.EXACT:
-            result = exact_match(lookup_array, lookup_value, return_array, orientation)
-            result = result if result else default
-        case MatchMode.NEXT_LARGER | MatchMode.NEXT_SMALLER:
-            if search_mode in (SearchMode.FROM_FIRST, SearchMode.FROM_LAST):
-                sorted_lookup_array = np.sort(lookup_array)
-                if orientation == LookupOrientation.HORIZONTAL:
-                    sorted_return_array = return_array[:, np.argsort(lookup_array)]
+    # first we're only concerned with finding the index of the position to extract
+    # If there's a match, it doesn't matter what the MatchMode is
+    exact_match_indices = np.flatnonzero(lookup_array == lookup_value)
+    if exact_match_indices.size == 0:
+        exact_match_indices = None
+
+    if exact_match_indices is not None:
+        sorted_return_array = return_array
+        match search_mode:
+            case SearchMode.FROM_FIRST | SearchMode.BINARY_FROM_FIRST:
+                idx = exact_match_indices[0]
+            case SearchMode.FROM_LAST | SearchMode.BINARY_FROM_LAST:
+                idx = exact_match_indices[-1]
+            case _:
+                idx = exact_match_indices[0]
+    else: # No exact match found
+        match match_mode:
+            case MatchMode.EXACT:
+                idx = None
+            case MatchMode.NEXT_LARGER | MatchMode.NEXT_SMALLER:
+                if search_mode in (SearchMode.FROM_FIRST, SearchMode.FROM_LAST):
+                    sorted_lookup_array = np.sort(lookup_array)
+                    if orientation == LookupOrientation.HORIZONTAL:
+                        sorted_return_array = return_array[:, np.argsort(lookup_array)]
+                    else:
+                        sorted_return_array = return_array[np.argsort(lookup_array)]
                 else:
-                    sorted_return_array = return_array[np.argsort(lookup_array)]
-            else:
-                sorted_lookup_array = lookup_array
+                    sorted_lookup_array = lookup_array
+                    sorted_return_array = return_array
+
+
+                # For BINARY search modes, the arrays are assumed to be sorted
+
+                if search_mode in (SearchMode.BINARY_FROM_FIRST, SearchMode.FROM_FIRST):
+                    # If there's an exact match, return it, otherwise bisect left and find the index
+                    # of the first element that is less than lookup_value
+                    idx = bisect.bisect_left(sorted_lookup_array, lookup_value)
+                else:
+                    # If there's an exact match, return it, otherwise bisect right and find the
+                    # index of the first element that is greater than lookup_value
+                    idx = bisect.bisect_right(sorted_lookup_array, lookup_value)
+
+                if match_mode == MatchMode.NEXT_LARGER:
+                    idx = min(idx, len_lookup - 1)
+                else:
+                    idx = max(idx - 1, 0)
+
+                # result = extract_result(sorted_return_array, idx, orientation)
+
+            case MatchMode.REGEX | MatchMode.WILDCARD:
                 sorted_return_array = return_array
+                # For both of these match modes, Excel's XLOOKUP returns a #VALUE! error if either
+                # of the binary search modes are used
+                if search_mode in (SearchMode.BINARY_FROM_FIRST, SearchMode.BINARY_FROM_LAST):
+                    raise ValueError(
+                        "BINARY search modes are not supported for WILDCARD or REGEX match modes")
 
-            # For BINARY search modes, the arrays are assumed to be sorted
+                # For WILDCARD and REGEX match modes, lookup_value is treated as a string
+                lookup_value = str(lookup_value)
 
-            if search_mode in (SearchMode.BINARY_FROM_FIRST, SearchMode.FROM_FIRST):
-                idx = bisect.bisect_left(sorted_lookup_array, lookup_value)
-            else:
-                idx = bisect.bisect_right(sorted_lookup_array, lookup_value)
+                # if the value is not in the array, return the default value
 
-            if match_mode == MatchMode.NEXT_LARGER:
-                idx = min(idx, len_lookup - 1)
-            else:
-                idx = max(idx - 1, 0)
+                # if the match mode is WILDCARD, convert the lookup_value to a valid regex pattern
+                pattern = (re.escape(str(lookup_value)).replace(r'\*', '.*').replace(r'\?', '.')
+                                if match_mode == MatchMode.WILDCARD
+                                else str(lookup_value))
+                regex = re.compile(f'^{pattern}$', re.IGNORECASE)
 
-            result = extract_result(sorted_return_array, idx, orientation)
-            
+                matches = pd.Series(lookup_array).str.match(regex.pattern, na=False)
+                if matches.any():
+                    idx = matches.idxmax()
+                    # result = extract_result(return_array, idx, orientation)
+                else:
+                    idx = None
+                    # result = default
+            case _:
+                raise ValueError(f"Invalid match_mode: {match_mode}")
 
-        case MatchMode.REGEX | MatchMode.WILDCARD:
-            # For both of these match modes, Excel's XLOOKUP returns a #VALUE! error if either of
-            # the binary search modes are used
-            if search_mode in (SearchMode.BINARY_FROM_FIRST, SearchMode.BINARY_FROM_LAST):
-                raise ValueError(
-                    "BINARY search modes are not supported for WILDCARD or REGEX match modes")
-
-            # For WILDCARD and REGEX match modes, lookup_value is treated as a string
-            lookup_value = str(lookup_value)
-
-            # if the value is not in the array, return the default value
-
-            # if the match mode is WILDCARD, we convert the lookup_value to a valid regex pattern
-            regex_pattern = (re.escape(str(lookup_value)).replace(r'\*', '.*').replace(r'\?', '.')
-                             if match_mode == MatchMode.WILDCARD else str(lookup_value))
-            regex = re.compile(f'^{regex_pattern}$', re.IGNORECASE)
-
-            matches = pd.Series(lookup_array).str.match(
-                regex.pattern, na=False)
-            if matches.any():
-                idx = matches.idxmax()
-                result = extract_result(return_array, idx, orientation)
-            else:
-                result = default
-        case _:
-            raise ValueError(f"Invalid match_mode: {match_mode}")
+    if idx is not None:
+        result = extract_result(sorted_return_array, idx, orientation)
+    else:
+        result = default
 
     return result
 
