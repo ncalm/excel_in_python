@@ -93,6 +93,9 @@ def xlookup_single(
     if lookup_array.ndim != 1:
         raise ValueError("lookup_array must be 1D")
 
+    # Initialize sorted_return_array with a default value
+    sorted_return_array = return_array
+
     len_lookup = len(lookup_array)
     shape_return = return_array.shape
     if len(shape_return) == 1:
