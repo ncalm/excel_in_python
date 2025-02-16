@@ -1,7 +1,8 @@
 """Test cases for the xlookup function."""
 import pytest
 import numpy as np
-from excel_in_python import xlookup, MatchMode, SearchMode
+from excel_in_python import xlookup
+from excel_in_python.enums import MatchMode, SearchMode
 
 
 # Define a fixture for the numeric lookup array
@@ -302,7 +303,7 @@ def test_xlookup_2d_return_array():
     return_array = np.array([[1, 2], [3, 4]])
 
     with pytest.raises(
-        ValueError, 
+        ValueError,
         match="One dimension of return_array must have the same length as lookup_array"):
         xlookup(1, lookup_array, return_array)
 
@@ -330,8 +331,11 @@ def test_xlookup_regex_and_binary():
     lookup_array = np.array([1, 2, 3])
     return_array = np.array(["a", "b", "c"])
 
-    with pytest.raises(ValueError, match="BINARY search modes are not supported for WILDCARD or REGEX match modes"):
-        xlookup(4, lookup_array, return_array, match_mode=MatchMode.REGEX, search_mode=SearchMode.BINARY_FROM_FIRST)
+    with pytest.raises(
+        ValueError,
+        match="BINARY search modes are not supported for WILDCARD or REGEX match modes"):
+        xlookup(4, lookup_array, return_array,
+                match_mode=MatchMode.REGEX, search_mode=SearchMode.BINARY_FROM_FIRST)
 
 # test for wildcard and binary search modes
 def test_xlookup_wildcard_and_binary():
@@ -339,5 +343,36 @@ def test_xlookup_wildcard_and_binary():
     lookup_array = np.array([1, 2, 3])
     return_array = np.array(["a", "b", "c"])
 
-    with pytest.raises(ValueError, match="BINARY search modes are not supported for WILDCARD or REGEX match modes"):
-        xlookup(4, lookup_array, return_array, match_mode=MatchMode.WILDCARD, search_mode=SearchMode.BINARY_FROM_FIRST)
+    with pytest.raises(
+        ValueError,
+        match="BINARY search modes are not supported for WILDCARD or REGEX match modes"):
+        xlookup(4, lookup_array, return_array,
+                match_mode=MatchMode.WILDCARD, search_mode=SearchMode.BINARY_FROM_FIRST)
+
+# test that lookup_array must be iterable
+def test_xlookup_lookup_array_not_iterable():
+    """Test that xlookup raises TypeError when lookup_array is not iterable."""
+    lookup_array = 1
+    return_array = np.array(["a", "b", "c"])
+
+    with pytest.raises(TypeError, match="lookup_array and return_array must be iterable"):
+        xlookup(1, lookup_array, return_array)
+
+# test that return_array must be iterable
+def test_xlookup_return_array_not_iterable():
+    """Test that xlookup raises TypeError when return_array is not iterable."""
+    lookup_array = np.array([1, 2, 3])
+    return_array = 1
+
+    with pytest.raises(TypeError, match="lookup_array and return_array must be iterable"):
+        xlookup(1, lookup_array, return_array)
+
+# test where 1D return_array has different length to lookup_array
+def test_xlookup_return_array_different_length():
+    """Test that xlookup raises ValueError when 1D 
+    return_array has different length to lookup_array."""
+    lookup_array = np.array([1, 2, 3])
+    return_array = np.array([1, 2])
+
+    with pytest.raises(ValueError, match="return_array dim."):
+        xlookup(1, lookup_array, return_array)
