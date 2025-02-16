@@ -171,17 +171,13 @@ def xlookup_single(
                 # result = extract_result(sorted_return_array, idx, orientation)
 
             case MatchMode.REGEX | MatchMode.WILDCARD:
+                # print("regex")
                 sorted_return_array = return_array
                 # For both of these match modes, Excel's XLOOKUP returns a #VALUE! error if either
                 # of the binary search modes are used
                 if search_mode in (SearchMode.BINARY_FROM_FIRST, SearchMode.BINARY_FROM_LAST):
                     raise ValueError(
                         "BINARY search modes are not supported for WILDCARD or REGEX match modes")
-
-                # For WILDCARD and REGEX match modes, lookup_value is treated as a string
-                lookup_value = str(lookup_value)
-
-                # if the value is not in the array, return the default value
 
                 # if the match mode is WILDCARD, convert the lookup_value to a valid regex pattern
                 pattern = (re.escape(str(lookup_value)).replace(r'\*', '.*').replace(r'\?', '.')
@@ -190,8 +186,15 @@ def xlookup_single(
                 regex = re.compile(f'^{pattern}$', re.IGNORECASE)
 
                 matches = pd.Series(lookup_array).str.match(regex.pattern, na=False)
+                print(matches)
                 if matches.any():
-                    idx = matches.idxmax()
+                    match search_mode:
+                        case SearchMode.FROM_FIRST:
+                            idx = matches.idxmax()
+                        case SearchMode.FROM_LAST:
+                            idx = matches[::-1].idxmax()
+                        case _:
+                            idx = None
                     # result = extract_result(return_array, idx, orientation)
                 else:
                     idx = None
