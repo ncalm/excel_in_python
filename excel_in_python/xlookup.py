@@ -1,19 +1,17 @@
 """Implementation of the XLOOKUP function in Python."""
 import numpy as np
-from excel_in_python import xmatch
+from excel_in_python.xmatch import xmatch
 from excel_in_python.enums import MatchMode, SearchMode
 from excel_in_python.utils import ensure_numpy_array
 
 
-def extract_result(return_array, selector):
+def extract_result(return_array, selector, orientation):
     """
     Helper function to extract results from return_array based on the index selector.
     """
-    if return_array.ndim == 1:
-        return return_array[selector]  # Slice rows for 1D array
-    return (return_array[:, selector]
-            if return_array.shape[0] == return_array.size
-            else return_array[selector])
+
+    return return_array[selector] if orientation == "vertical" else return_array[:, selector]
+
 
 
 def xlookup(
@@ -44,6 +42,14 @@ def xlookup(
         raise ValueError(
             "One dimension of return_array must have the same length as lookup_array"
         )
+    
+    # if return_array is 1D, it must be the same length as lookup_array
+    if return_array.ndim == 1 and return_array.size != lookup_array.size:
+        raise ValueError("1D return_array must have the same length as lookup_array")
+
+    # If len lookup_array is the same as the first dimension of return_array
+    # then the orientation is vertical, otherwise it is horizontal
+    orientation = "vertical" if return_array.shape[0] == lookup_array.size else "horizontal"
 
     indices = np.array([
         xmatch(val, lookup_array, match_mode, search_mode)
@@ -51,7 +57,7 @@ def xlookup(
     ])
 
     results = np.array([
-        extract_result(return_array, idx) if idx is not None else default for idx in indices
+        extract_result(return_array, idx, orientation) if idx is not None else default for idx in indices
     ])
 
     return results if isinstance(lookup_value, list) else results[0]

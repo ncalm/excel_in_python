@@ -73,11 +73,14 @@ def xmatch(
                     "BINARY search modes are not supported for WILDCARD or REGEX match modes"
                 )
 
+            print(re.escape(str(lookup_value)).replace(r'\\*', '.*').replace(r'\\?', '.'))
+
             pattern = (
-                re.escape(str(lookup_value)).replace(r'\\*', '.*').replace(r'\\?', '.')
+                re.escape(str(lookup_value)).replace(r'\*', '.*').replace(r'\?', '.')
                 if match_mode == MatchMode.WILDCARD
                 else str(lookup_value)
             )
+
             regex = re.compile(f'^{pattern}$', re.IGNORECASE)
 
             matches = pd.Series(lookup_array).str.match(regex.pattern, na=False)

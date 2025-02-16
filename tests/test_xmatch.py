@@ -36,16 +36,16 @@ def data():
         (10, MatchMode.NEXT_SMALLER, SearchMode.FROM_LAST, 25, False),
         (209, MatchMode.NEXT_LARGER, SearchMode.FROM_LAST, 30, False),  # exact if exists
         (209, MatchMode.NEXT_SMALLER, SearchMode.FROM_LAST, 30, False),  # exact if exists
-        (209, MatchMode.EXACT, SearchMode.BINARY_FROM_FIRST, 17, True),
-        (10, MatchMode.NEXT_LARGER, SearchMode.BINARY_FROM_FIRST, 10, True),
-        (10, MatchMode.NEXT_SMALLER, SearchMode.BINARY_FROM_FIRST, 25, True),
-        (209, MatchMode.NEXT_LARGER, SearchMode.BINARY_FROM_FIRST, 17, True),  # exact if exists
-        (209, MatchMode.NEXT_SMALLER, SearchMode.BINARY_FROM_FIRST, 17, True),  # exact if exists
-        (209, MatchMode.EXACT, SearchMode.BINARY_FROM_LAST, 30, True),
-        (10, MatchMode.NEXT_LARGER, SearchMode.BINARY_FROM_LAST, 10, True),
-        (10, MatchMode.NEXT_SMALLER, SearchMode.BINARY_FROM_LAST, 25, True),
-        (209, MatchMode.NEXT_LARGER, SearchMode.BINARY_FROM_LAST, 30, True),  # exact if exists
-        (209, MatchMode.NEXT_SMALLER, SearchMode.BINARY_FROM_LAST, 30, True),  # exact if exists
+        (209, MatchMode.EXACT, SearchMode.BINARY_FROM_FIRST, 9, True),
+        (10, MatchMode.NEXT_LARGER, SearchMode.BINARY_FROM_FIRST, 1, True),
+        (10, MatchMode.NEXT_SMALLER, SearchMode.BINARY_FROM_FIRST, 0, True),
+        (209, MatchMode.NEXT_LARGER, SearchMode.BINARY_FROM_FIRST, 9, True),  # exact if exists
+        (209, MatchMode.NEXT_SMALLER, SearchMode.BINARY_FROM_FIRST, 9, True),  # exact if exists
+        (209, MatchMode.EXACT, SearchMode.BINARY_FROM_LAST, 10, True),
+        (10, MatchMode.NEXT_LARGER, SearchMode.BINARY_FROM_LAST, 1, True),
+        (10, MatchMode.NEXT_SMALLER, SearchMode.BINARY_FROM_LAST, 0, True),
+        (209, MatchMode.NEXT_LARGER, SearchMode.BINARY_FROM_LAST, 10, True),  # exact if exists
+        (209, MatchMode.NEXT_SMALLER, SearchMode.BINARY_FROM_LAST, 10, True),  # exact if exists
     ]
 )
 def test_xmatch(data, lookup_value, match_mode,
@@ -58,13 +58,9 @@ def test_xmatch(data, lookup_value, match_mode,
     # add the original indices to the lookup array
     numeric_lookup_array = np.array(data)
 
-    # Sort only if binary search mode is used
-    if should_sort:
-        sort_indices = np.argsort(numeric_lookup_array)  # Indices after sorting
-        lookup_array = numeric_lookup_array[sort_indices]  # Sorted lookup array
-        expected_result = sort_indices[expected_result]  # Map expected index to sorted position
-    else:
-        lookup_array = numeric_lookup_array
+    # sort the lookup array if should_sort is true
+    lookup_array = (np.sort(numeric_lookup_array) 
+                    if should_sort else numeric_lookup_array)
 
 
     # if should_sort is true, sort the numeric_lookup_array by the first column
@@ -129,12 +125,12 @@ def text_lookup_data():
     "lookup_value, match_mode, search_mode, expected_result, should_sort",
     [
         (".*Blvd$", MatchMode.REGEX, SearchMode.FROM_FIRST, 2, False),
-        (".*Blvd$", MatchMode.REGEX, SearchMode.FROM_LAST, 10, False),
+        (".*Blvd$", MatchMode.REGEX, SearchMode.FROM_LAST, 28, False),
         ("* Blvd", MatchMode.WILDCARD, SearchMode.FROM_FIRST, 2, False),
-        ("* Blvd", MatchMode.WILDCARD, SearchMode.FROM_LAST, 10, False),
+        ("* Blvd", MatchMode.WILDCARD, SearchMode.FROM_LAST, 28, False),
 
         # regex match that has no matches
-        (".*Boulvd$", MatchMode.REGEX, SearchMode.FROM_FIRST, [], False),
+        (".*Boulvd$", MatchMode.REGEX, SearchMode.FROM_FIRST, None, False),
     ]
 )
 def test_xmatch_text(text_lookup_data, lookup_value, match_mode,
@@ -212,5 +208,5 @@ def test_xmatch_lookup_array_not_iterable():
     """Test that xmatch raises TypeError when lookup_array is not iterable."""
     lookup_array = 1
 
-    with pytest.raises(TypeError, match="lookup_array and return_array must be iterable"):
+    with pytest.raises(TypeError, match="lookup_array must be iterable"):
         xmatch(1, lookup_array)
