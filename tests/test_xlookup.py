@@ -57,6 +57,14 @@ def data():
     [
         (209, MatchMode.EXACT, SearchMode.FROM_FIRST, [
          'xi4', 'omicron4', 'pi4', 'rho4', 'sigma4'], False, "vertical"),
+
+        # to test integers instead of enum values
+        (209, 0, 1, [
+         'xi4', 'omicron4', 'pi4', 'rho4', 'sigma4'], False, "vertical"),
+
+        # test exact match with a number not in the array
+        (1000, MatchMode.EXACT, SearchMode.FROM_FIRST, [], False, "vertical"),
+
         (10, MatchMode.NEXT_LARGER, SearchMode.FROM_FIRST, [
          'gamma3', 'delta3', 'epsilon3', 'zeta3', 'eta3'], False, "vertical"),
         (10, MatchMode.NEXT_SMALLER, SearchMode.FROM_FIRST, [
@@ -224,6 +232,9 @@ def text_lookup_data():
         ("* Blvd", MatchMode.WILDCARD, SearchMode.FROM_LAST,
          [('5678 Sunset Blvd', 'Pinecrest', 'FL')], False, "vertical"),
 
+        # regex match that has no matches
+        (".*Boulvd$", MatchMode.REGEX, SearchMode.FROM_FIRST, [], False, "vertical"),
+
         # Horizontal orientation
         (".*Blvd$", MatchMode.REGEX, SearchMode.FROM_FIRST,
          [('555 Birch Blvd', 'Brookfield', 'IL')], False, "horizontal"),
@@ -262,3 +273,71 @@ def test_xlookup_text(text_lookup_data, lookup_value, match_mode,
         match_mode=match_mode,
         search_mode=search_mode
     ) == expected_result)
+
+def test_xlookup_empty_arrays():
+    """Test that xlookup raises ValueError when lookup_array or return_array is empty."""
+    empty_array = np.array([])
+    valid_array = np.array([1, 2, 3])
+
+    with pytest.raises(ValueError, match="lookup_array and return_array must not be empty"):
+        xlookup(1, empty_array, valid_array)
+
+    with pytest.raises(ValueError, match="lookup_array and return_array must not be empty"):
+        xlookup(1, valid_array, empty_array)
+
+# test where lookup_array is not 1 dimensional
+def test_xlookup_2d_array():
+    """Test that xlookup raises ValueError when lookup_array is not 1D."""
+    lookup_array = np.array([[1, 2], [3, 4]])
+    return_array = np.array([["a", "b"], ["c", "d"]])
+
+    with pytest.raises(ValueError, match="lookup_array must be 1D"):
+        xlookup(1, lookup_array, return_array)
+
+# test where neither dimension of return_array has the same length as lookup_array
+def test_xlookup_2d_return_array():
+    """Test that xlookup raises ValueError when neither dimension of return_array has 
+    the same length as lookup_array."""
+    lookup_array = np.array([1, 2, 3])
+    return_array = np.array([[1, 2], [3, 4]])
+
+    with pytest.raises(
+        ValueError, 
+        match="One dimension of return_array must have the same length as lookup_array"):
+        xlookup(1, lookup_array, return_array)
+
+# test for invalid search_mode
+def test_xlookup_invalid_search_mode():
+    """Test that xlookup raises ValueError when an invalid search_mode is provided."""
+    lookup_array = np.array([1, 2, 3])
+    return_array = np.array(["a", "b", "c"])
+
+    with pytest.raises(ValueError, match="Invalid search_mode"):
+        xlookup(1, lookup_array, return_array, search_mode=5)
+
+# test for invalid match_mode
+def test_xlookup_invalid_match_mode():
+    """Test that xlookup raises ValueError when an invalid match_mode is provided."""
+    lookup_array = np.array([1, 2, 3])
+    return_array = np.array(["a", "b", "c"])
+
+    with pytest.raises(ValueError, match="Invalid match_mode"):
+        xlookup(1, lookup_array, return_array, match_mode=5)
+
+# test for regex and binary search modes
+def test_xlookup_regex_and_binary():
+    """Test that xlookup raises ValueError when regex is used with binary search mode."""
+    lookup_array = np.array([1, 2, 3])
+    return_array = np.array(["a", "b", "c"])
+
+    with pytest.raises(ValueError, match="BINARY search modes are not supported for WILDCARD or REGEX match modes"):
+        xlookup(4, lookup_array, return_array, match_mode=MatchMode.REGEX, search_mode=SearchMode.BINARY_FROM_FIRST)
+
+# test for wildcard and binary search modes
+def test_xlookup_wildcard_and_binary():
+    """Test that xlookup raises ValueError when wildcard is used with binary search mode."""
+    lookup_array = np.array([1, 2, 3])
+    return_array = np.array(["a", "b", "c"])
+
+    with pytest.raises(ValueError, match="BINARY search modes are not supported for WILDCARD or REGEX match modes"):
+        xlookup(4, lookup_array, return_array, match_mode=MatchMode.WILDCARD, search_mode=SearchMode.BINARY_FROM_FIRST)
