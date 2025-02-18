@@ -18,15 +18,27 @@ array formulas will return a #REF! error when they are refreshed.
 """
 import numpy as np
 
+MAX_ELEMENTS = 10**7  # Safety limit to prevent excessive memory usage
+
 def sequence(rows=1, columns=1, start=1, step=1):
-    """Return a 2D array of sequential numbers"""
+    """Return a 2D array of sequential numbers, mimicking Excel's SEQUENCE behavior."""
+
 
     if not all(isinstance(arg, (int, float)) for arg in (rows, columns, start, step)):
         raise ValueError("All arguments must be numeric")
 
     if rows < 1 or columns < 1:
         raise ValueError("rows and columns must be at least 1")
-    
-    rows, columns = int(np.floor(rows)), int(np.floor(columns))  # Coerce floats to integer floor
-    values = start + step * np.arange(rows * columns)
+
+    rows, columns = int(np.floor(rows)), int(np.floor(columns))
+    total_elements = rows * columns
+
+    if total_elements > MAX_ELEMENTS:
+        raise MemoryError("Requested array is too large")
+
+    if step == 0:
+        values = np.full(total_elements, start)  # Fill with `start` if step is 0
+    else:
+        values = start + step * np.arange(total_elements)
+
     return values.reshape((rows, columns))
