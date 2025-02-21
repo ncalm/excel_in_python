@@ -3,8 +3,11 @@
 **Excel in Python** is a lightweight Python package that provides Excel-like functions for working with tabular data in Python. It aims to bring familiar Excel functions such as `XLOOKUP`, `XMATCH`, and `SEQUENCE` into a Python environment while maintaining efficiency and flexibility.
 
 My intent with this library is to:
+
 a) Offer an opportunity for users familiar with Excel functions to learn more about Python
+
 b) Practice my own Python in implementing Excel functions
+
 c) Offer powerful Excel functions to Python users in other environments by encapsulating the same logic outside of Excel
 
 ## Features
