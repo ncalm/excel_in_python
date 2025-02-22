@@ -35,21 +35,48 @@ def xmatch(
     if lookup_array.ndim != 1:
         raise ValueError("lookup_array must be 1D")
 
-    exact_match_indices = np.flatnonzero(lookup_array == lookup_value)
-    if exact_match_indices.size > 0:
-        match search_mode:
-            case SearchMode.FROM_FIRST | SearchMode.BINARY_FROM_FIRST:
-                return exact_match_indices[0]
-            case SearchMode.FROM_LAST | SearchMode.BINARY_FROM_LAST:
-                return exact_match_indices[-1]
+    # exact_match_indices = np.flatnonzero(lookup_array == lookup_value)
+    # if exact_match_indices.size > 0:
+    #     match search_mode:
+    #         case SearchMode.FROM_FIRST | SearchMode.BINARY_FROM_FIRST:
+    #             return exact_match_indices[0]
+    #         case SearchMode.FROM_LAST | SearchMode.BINARY_FROM_LAST:
+    #             return exact_match_indices[-1]
 
     match match_mode:
         case MatchMode.EXACT:
+            # if from first or from last, use flatnonzero to find the first or last match
+            match search_mode:
+                case SearchMode.FROM_FIRST:
+                    exact_match_indices = np.flatnonzero(lookup_array == lookup_value)
+                    if exact_match_indices.size > 0:
+                        return exact_match_indices[0]
+                case SearchMode.FROM_LAST:
+                    exact_match_indices = np.flatnonzero(lookup_array == lookup_value)
+                    if exact_match_indices.size > 0:
+                        return exact_match_indices[-1]
+                case SearchMode.BINARY_FROM_FIRST:
+                    # Binary search for the first occurrence
+                    idx = np.searchsorted(lookup_array, lookup_value, side='left')
+                    if idx < len(lookup_array) and lookup_array[idx] == lookup_value:
+                        return idx
+                case SearchMode.BINARY_FROM_LAST:
+                    # Binary search for the last occurrence
+                    idx = np.searchsorted(lookup_array, lookup_value, side='right') - 1
+                    if idx >= 0 and lookup_array[idx] == lookup_value:
+                        return idx
+
             return None
+
         case MatchMode.NEXT_LARGER | MatchMode.NEXT_SMALLER:
             # Store original indices before sorting
-            sorted_indices = np.argsort(lookup_array)  # Indices of lookup_array after sorting
-            sorted_lookup_array = lookup_array[sorted_indices]  # Sorted values
+            if search_mode in (SearchMode.BINARY_FROM_FIRST, SearchMode.BINARY_FROM_LAST):
+                # the data are assumed to be already sorted, so don't sort
+                sorted_indices = np.arange(len(lookup_array))  # Identity mapping
+                sorted_lookup_array = lookup_array
+            else:
+                sorted_indices = np.argsort(lookup_array)  # Indices of lookup_array after sorting
+                sorted_lookup_array = lookup_array[sorted_indices]  # Sorted values
 
             # Find the position in the sorted array
             idx = (
@@ -60,9 +87,15 @@ def xmatch(
 
             # Ensure index stays within valid range
             if match_mode == MatchMode.NEXT_LARGER:
-                idx = min(idx, len(lookup_array) - 1)
+                check_exact_idx = max(idx - 1, 0)
+                idx = (check_exact_idx
+                       if sorted_lookup_array[check_exact_idx] == lookup_value
+                       else min(idx, len(lookup_array) - 1))
             else:  # NEXT_SMALLER
-                idx = max(idx - 1, 0)
+                check_exact_idx = min(idx, len(lookup_array) - 1)
+                idx = (check_exact_idx
+                       if sorted_lookup_array[check_exact_idx] == lookup_value
+                       else max(idx - 1, 0))
 
             # Map back to original index
             return int(sorted_indices[idx])
