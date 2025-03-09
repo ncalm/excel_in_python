@@ -14,6 +14,7 @@ c) Offer powerful Excel functions to Python users in other environments by encap
 
 This package currently includes the following modules:
 
+- **`date.py`** - Implementations of date-related functions such as `DATE`, `EDATE` and `EOMONTH`.
 - **`xlookup.py`** – Implements Excel's `XLOOKUP` function in Python, allowing flexible lookups with exact, approximate, and wildcard matching.
 - **`xmatch.py`** – Implements Excel's `XMATCH` function, providing flexible matching options, including binary search modes.
 - **`sequence.py`** – Implements Excel’s `SEQUENCE` function, generating numeric sequences in a structured array format.
@@ -35,7 +36,7 @@ To install `excel_in_python`, first ensure you have Python 3.x installed, then i
 pip install -r requirements.txt
 ```
 
-## Usage
+## Example usage of select functions
 
 ### XLOOKUP
 
