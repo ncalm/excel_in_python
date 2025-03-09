@@ -2,7 +2,7 @@
 from datetime import datetime
 import math
 import pytest
-from excel_in_python.eomonth import eomonth  # Update with the actual module name
+from excel_in_python.date import eomonth  # Update with the actual module name
 
 @pytest.mark.parametrize(
     "start_date, months, expected",
