@@ -42,30 +42,6 @@ def date(year, month, day):
     return vectorized_func(array_arg)
 
 
-# def eomonth(start_date, months):
-#     """Returns the last day of the month that is the indicated number of
-#     months before or after start_date.
-
-#     If start_date is an iterable, applies the function to each element.
-#     If an element is not a datetime object, returns NaN for that element.
-#     """
-
-#     def compute_eomonth(date_scalar):
-#         if isinstance(date_scalar, datetime):
-#             return (date_scalar + relativedelta(months=months, day=31)).date()
-#         return math.nan  # Return NaN for invalid elements
-
-#     if isinstance(start_date, Iterable) and not isinstance(start_date, (str, datetime)):
-#         return [compute_eomonth(date) for date in start_date]
-
-#     if not isinstance(start_date, datetime):
-#         raise ValueError("start_date must be a datetime object.")
-#     if not isinstance(months, int):
-#         raise ValueError("months must be an integer.")
-
-#     return compute_eomonth(start_date)
-
-
 def _adjust_date(start_date, months, day=None):
     """Generalized function to adjust a date by a given number of months.
 
